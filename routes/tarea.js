@@ -33,8 +33,7 @@ router.put('/tarea/:id', async (req, res) => {
 });
 
 router.delete('/tarea/:id', async (req, res) => {
-    const _id = req.params.id;
-    
+    const _id = req.params.id;    
     try {
         const tareaDb = await Tarea.findByIdAndDelete({ _id });
       
@@ -50,18 +49,49 @@ router.delete('/tarea/:id', async (req, res) => {
 router.get('/tareas', async (req, res) => {
     try {
         const tareaDb = await Tarea.find();
-        res.json(tareaDb);
-    } 
+        tareaDb.sort((a, b) => {
+            return new Date(b.fechaCreacion) - new Date(a.fechaCreacion);
+        });
+        const terminadas = await Tarea.find({ estatus: true }).countDocuments();
+        const sinTerminar = await Tarea.find({ estatus: false }).countDocuments();
+        res.json({ Data: tareaDb, total: tareaDb.length, terminadas, sinTerminar });
+    }
     catch (error) {
         return res.status(500).json({ mensaje: 'Ocurrio un error interno de servidor', error });
     }
 });
 
-router.get('/tarea/:id', async (req, res) => {
-    const _id = req.params.id;
+router.get('/tareas/:id', async (req, res) => {
+    const _id = Number(req.params.id);
+    
+    if (!_id) return res.status(400).json({ mensaje: 'El valor de busqueda no es valido.' });
+    
+    let tareaDb = null;
     try {
-        const tareaDb = await Tarea.findOne({ _id });
-        res.json(tareaDb);
+        console.log("Value: ", _id);
+        switch (_id) {
+            case 1:
+                /*TODOS*/
+                tareaDb = await Tarea.find();
+                break;
+            case 2:
+                /*TERMINADAS*/
+                tareaDb = await Tarea.find({ estatus: true });
+                break;
+            case 3:
+                /*SIN TERMINAR*/
+                tareaDb = await Tarea.find({ estatus: false });
+                break;
+            default:
+                return res.status(400).json({ mensaje: 'No se encontraron tareas con el parametros especificado.' });
+        }
+        if (!tareaDb) return res.status(400).json({ mensaje: 'No se encontraron tareas.' });
+
+        const total = await Tarea.find().countDocuments();
+        const terminadas = await Tarea.find({ estatus: true }).countDocuments();
+        const sinTerminar = await Tarea.find({ estatus: false }).countDocuments();
+
+        res.json({ Data: tareaDb, total, terminadas, sinTerminar});
     } 
     catch (error) {
         return res.status(500).json({ mensaje: 'Ocurrio un error interno de servidor', error });
